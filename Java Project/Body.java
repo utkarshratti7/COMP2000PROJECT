@@ -28,4 +28,9 @@ public class Body {
     Color colour(){
         return Color.LIGHT_GRAY;
     }
+
+    @Override
+    public String toString() {
+        return String.format("%s [Mass: %.2f, Radius: %.1f]", name, mass, radius);
+    }
 }
