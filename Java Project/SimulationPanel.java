@@ -123,5 +123,8 @@ public class SimulationPanel extends JPanel {
             g2.fillOval(x-r,y-r,r*2,r*2);
             g2.drawString(body.name,x+r+4,y-r-4);
         }
+        
+        g2.setColor(Color.WHITE);
+        g2.drawString("Active Celestial Bodies: " + bodies.size(), 20, 30);
     }
 }
