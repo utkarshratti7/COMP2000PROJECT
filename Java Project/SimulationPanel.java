@@ -26,9 +26,9 @@ public class SimulationPanel extends JPanel {
     private static final double DT = 50000;
 
     private final List<Body> bodies;
-    // Delegates collision handling to a separate strategy.
+    // Delegates black hole collisions to a dedicated strategy.
     private final CollisionStrategy collisionStrategy =
-        new BlackHoleCollisionStrategy();
+    new BlackHoleCollisionStrategy();
 
     private StarType selectedStarType = StarType.G;
     private PlanetType selectedPlanetType = PlanetType.ROCKY;
@@ -314,7 +314,10 @@ public class SimulationPanel extends JPanel {
             applyGravity();
         }
 
-        // Delegate collision handling to the selected strategy.
+        // Resolve collisions between stars and planets.
+        handleStarCollisions();
+
+        // Apply the collision strategy for black hole interactions.
         collisionStrategy.resolveCollisions(bodies);
 
         repaint();
@@ -375,78 +378,108 @@ public class SimulationPanel extends JPanel {
         }
     }
 
-    // -----------------------------
-    // DRAW THE SIMULATION
-    // -----------------------------
-    @Override
-        protected void paintComponent(Graphics g) {
+    // A planet that touches the star is absorbed: the star grows and the planet is removed.
+private void handleStarCollisions() {
 
-            super.paintComponent(g);
+    Star star = findStar();
 
-            Graphics2D g2 = (Graphics2D) g;
+    if (star == null) {
+        return;
+    }
 
-            g2.setRenderingHint(
-                    RenderingHints.KEY_ANTIALIASING,
-                    RenderingHints.VALUE_ANTIALIAS_ON
-            );
+    Iterator<Body> iterator = bodies.iterator();
 
-            // UPDATED: Draw stars using current panel dimensions.
-            for (BackgroundStar star : backgroundStars) {
-                star.draw(g2, getWidth(), getHeight());
-            }
+    while (iterator.hasNext()) {
 
-            int centreX = getWidth() / 2;
-            int centreY = getHeight() / 2;
+        Body body = iterator.next();
 
-            // Draw interactive celestial bodies.
-            for (Body body : bodies) {
+        if (!(body instanceof Planet)) {
+            continue;
+        }
 
-                int x = centreX
-                        + (int) Math.round(
-                                body.l.x * DISTANCE_SCALE
-                        );
+        Planet planet = (Planet) body;
 
-                int y = centreY
-                        + (int) Math.round(
-                                body.l.y * DISTANCE_SCALE
-                        );
+        double dx = star.l.x - planet.l.x;
+        double dy = star.l.y - planet.l.y;
+        double distance = Math.sqrt(dx * dx + dy * dy);
 
-                int radius = Math.max(
-                        MIN_RADIUS_PX,
-                        (int) Math.round(
-                                body.radius * SIZE_SCALE
-                        )
-                );
+        double touchDistance =
+        (star.getDisplayRadius() + planet.type.displayRadius)
+                / DISTANCE_SCALE;
 
-                if (body instanceof Star) {
-                    radius = Math.max(
-                            6,
-                            (int) Math.round(body.radius * 6)
-                    );
-                }
-
-                if (body instanceof Planet) {
-                    Planet planet = (Planet) body;
-                    radius = planet.type.displayRadius;
-                }
-
-                g2.setColor(body.colour());
-
-                g2.fillOval(
-                        x - radius,
-                        y - radius,
-                        radius * 2,
-                        radius * 2
-                );
-
-                g2.drawString(
-                        body.name,
-                        x + radius + 4,
-                        y - radius - 4
-                );
-            }
-
-            g2.setColor(Color.WHITE);
-            g2.drawString("Active Celestial Bodies: " + bodies.size(), 20, 30);
+    if (distance < touchDistance) {
+        star.absorbPlanet(planet);
+        iterator.remove();
         }
     }
+}
+    // --------------------------------
+    // DRAW THE SIMULATION
+    // --------------------------------
+
+    @Override
+    protected void paintComponent(Graphics g) {
+
+        super.paintComponent(g);
+
+        Graphics2D g2 = (Graphics2D) g;
+
+        g2.setRenderingHint(
+                RenderingHints.KEY_ANTIALIASING,
+                RenderingHints.VALUE_ANTIALIAS_ON
+        );
+
+        // UPDATED: Draw stars using current panel dimensions.
+        for (BackgroundStar star : backgroundStars) {
+            star.draw(g2, getWidth(), getHeight());
+        }
+
+        int centreX = getWidth() / 2;
+        int centreY = getHeight() / 2;
+
+        // Draw interactive celestial bodies.
+        for (Body body : bodies) {
+
+            int x = centreX
+                    + (int) Math.round(
+                            body.l.x * DISTANCE_SCALE
+                    );
+
+            int y = centreY
+                    + (int) Math.round(
+                            body.l.y * DISTANCE_SCALE
+                    );
+
+            int radius = Math.max(
+                    MIN_RADIUS_PX,
+                    (int) Math.round(
+                            body.radius * SIZE_SCALE
+                    )
+            );
+
+            if (body instanceof Star) {
+                radius = ((Star) body).getDisplayRadius();
+            }
+
+            if (body instanceof Planet) {
+                Planet planet = (Planet) body;
+                radius = planet.type.displayRadius;
+            }
+
+            g2.setColor(body.colour());
+
+            g2.fillOval(
+                    x - radius,
+                    y - radius,
+                    radius * 2,
+                    radius * 2
+            );
+
+            g2.drawString(
+                    body.name,
+                    x + radius + 4,
+                    y - radius - 4
+            );
+        }
+    }
+}
