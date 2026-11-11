@@ -26,6 +26,9 @@ public class SimulationPanel extends JPanel {
     private static final double DT = 50000;
 
     private final List<Body> bodies;
+    // Delegates collision handling to a separate strategy.
+    private final CollisionStrategy collisionStrategy =
+        new BlackHoleCollisionStrategy();
 
     private StarType selectedStarType = StarType.G;
     private PlanetType selectedPlanetType = PlanetType.ROCKY;
@@ -311,7 +314,8 @@ public class SimulationPanel extends JPanel {
             applyGravity();
         }
 
-        handleBlackHoleCollisions();
+        // Delegate collision handling to the selected strategy.
+        collisionStrategy.resolveCollisions(bodies);
 
         repaint();
     }
@@ -371,123 +375,78 @@ public class SimulationPanel extends JPanel {
         }
     }
 
-    // --------------------------------
-    // BLACK HOLE COLLISIONS
-    // --------------------------------
-
-    private void handleBlackHoleCollisions() {
-
-        Iterator<Body> iterator =
-                bodies.iterator();
-
-        while (iterator.hasNext()) {
-
-            Body body = iterator.next();
-
-            if (body instanceof BlackHole) {
-                continue;
-            }
-
-            for (Body source : bodies) {
-
-                if (!(source instanceof BlackHole)) {
-                    continue;
-                }
-
-                double dx = source.l.x - body.l.x;
-                double dy = source.l.y - body.l.y;
-
-                double distance =
-                        Math.sqrt(dx * dx + dy * dy);
-
-                if (distance < source.radius
-                        + body.radius) {
-
-                    System.out.println(
-                            body.name + " was consumed by "
-                                    + source.name
-                    );
-
-                    iterator.remove();
-                    break;
-                }
-            }
-        }
-    }
-
-    // --------------------------------
+    // -----------------------------
     // DRAW THE SIMULATION
-    // --------------------------------
-
+    // -----------------------------
     @Override
-    protected void paintComponent(Graphics g) {
+        protected void paintComponent(Graphics g) {
 
-        super.paintComponent(g);
+            super.paintComponent(g);
 
-        Graphics2D g2 = (Graphics2D) g;
+            Graphics2D g2 = (Graphics2D) g;
 
-        g2.setRenderingHint(
-                RenderingHints.KEY_ANTIALIASING,
-                RenderingHints.VALUE_ANTIALIAS_ON
-        );
-
-        // UPDATED: Draw stars using current panel dimensions.
-        for (BackgroundStar star : backgroundStars) {
-            star.draw(g2, getWidth(), getHeight());
-        }
-
-        int centreX = getWidth() / 2;
-        int centreY = getHeight() / 2;
-
-        // Draw interactive celestial bodies.
-        for (Body body : bodies) {
-
-            int x = centreX
-                    + (int) Math.round(
-                            body.l.x * DISTANCE_SCALE
-                    );
-
-            int y = centreY
-                    + (int) Math.round(
-                            body.l.y * DISTANCE_SCALE
-                    );
-
-            int radius = Math.max(
-                    MIN_RADIUS_PX,
-                    (int) Math.round(
-                            body.radius * SIZE_SCALE
-                    )
+            g2.setRenderingHint(
+                    RenderingHints.KEY_ANTIALIASING,
+                    RenderingHints.VALUE_ANTIALIAS_ON
             );
 
-            if (body instanceof Star) {
-                radius = Math.max(
-                        6,
-                        (int) Math.round(body.radius * 6)
+            // UPDATED: Draw stars using current panel dimensions.
+            for (BackgroundStar star : backgroundStars) {
+                star.draw(g2, getWidth(), getHeight());
+            }
+
+            int centreX = getWidth() / 2;
+            int centreY = getHeight() / 2;
+
+            // Draw interactive celestial bodies.
+            for (Body body : bodies) {
+
+                int x = centreX
+                        + (int) Math.round(
+                                body.l.x * DISTANCE_SCALE
+                        );
+
+                int y = centreY
+                        + (int) Math.round(
+                                body.l.y * DISTANCE_SCALE
+                        );
+
+                int radius = Math.max(
+                        MIN_RADIUS_PX,
+                        (int) Math.round(
+                                body.radius * SIZE_SCALE
+                        )
+                );
+
+                if (body instanceof Star) {
+                    radius = Math.max(
+                            6,
+                            (int) Math.round(body.radius * 6)
+                    );
+                }
+
+                if (body instanceof Planet) {
+                    Planet planet = (Planet) body;
+                    radius = planet.type.displayRadius;
+                }
+
+                g2.setColor(body.colour());
+
+                g2.fillOval(
+                        x - radius,
+                        y - radius,
+                        radius * 2,
+                        radius * 2
+                );
+
+                g2.drawString(
+                        body.name,
+                        x + radius + 4,
+                        y - radius - 4
                 );
             }
 
-            if (body instanceof Planet) {
-                Planet planet = (Planet) body;
-                radius = planet.type.displayRadius;
-            }
-
-            g2.setColor(body.colour());
-
-            g2.fillOval(
-                    x - radius,
-                    y - radius,
-                    radius * 2,
-                    radius * 2
-            );
-
-            g2.drawString(
-                    body.name,
-                    x + radius + 4,
-                    y - radius - 4
-            );
+            g2.setColor(Color.WHITE);
+            g2.drawString("Active Celestial Bodies: " + bodies.size(), 20, 30);
         }
-        
-        g2.setColor(Color.WHITE);
-        g2.drawString("Active Celestial Bodies: " + bodies.size(), 20, 30);
     }
-}
