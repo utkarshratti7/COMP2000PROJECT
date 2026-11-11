@@ -241,12 +241,37 @@ public class SimulationPanel extends JPanel {
         double distance =
                 Math.sqrt(dx * dx + dy * dy);
 
-        if (distance <= star.radius
-                + selectedPlanetType.radius) {
 
-            System.out.println("Too close to the star.");
+        // Calculate the minimum placement distance based on
+        // the actual displayed sizes of both celestial bodies.
+        int starDisplayRadius = Math.max(
+                6,
+                (int) Math.round(star.radius * 6)
+        );
+
+        int planetDisplayRadius = selectedPlanetType.displayRadius;
+
+        // Convert screen pixels into simulation coordinates.
+        double minimumVisualDistance =
+                (starDisplayRadius + planetDisplayRadius)
+                / DISTANCE_SCALE;
+
+        // Preserve the original physical collision restriction.
+        double minimumPhysicalDistance =
+                star.radius + selectedPlanetType.radius;
+
+        double minimumDistance = Math.max(
+                minimumVisualDistance,
+                minimumPhysicalDistance
+        );
+
+        if (distance <= minimumDistance) {
+            System.out.println(
+                    "Too close to the star. Choose a position further away."
+            );
             return;
         }
+
 
         // Prevent identical positions.
         for (Body body : bodies) {
